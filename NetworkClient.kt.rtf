@@ -1,0 +1,196 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2865
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 package com.suspension.analyzer.network\
+\
+import okhttp3.MediaType.Companion.toMediaType\
+import okhttp3.MultipartBody\
+import okhttp3.OkHttpClient\
+import okhttp3.RequestBody.Companion.asRequestBody\
+import okhttp3.RequestBody.Companion.toRequestBody\
+import org.json.JSONArray\
+import org.json.JSONObject\
+import retrofit2.Retrofit\
+import retrofit2.converter.gson.GsonConverterFactory\
+import retrofit2.http.*\
+import java.io.File\
+import java.util.concurrent.TimeUnit\
+\
+/**\
+ * API models for backend communication\
+ */\
+data class VehicleProfileDto(\
+    val make: String,\
+    val model: String,\
+    val year: Int,\
+    val suspensionType: String,\
+    val notes: String = ""\
+)\
+\
+data class TestRunSubmissionDto(\
+    val vehicleId: String,\
+    val testType: String,\
+    val roadSurface: String,\
+    val protocolComplianceScore: Float,\
+    val peakLateralG: Float,\
+    val peakLongitudinalG: Float,\
+    val peakVerticalG: Float,\
+    val reboundSettleTime: Long,\
+    val sensorDataJson: String,\
+    val ambientTemp: Float = 0f\
+)\
+\
+data class BenchmarkComparisonDto(\
+    val vehicleId: String,\
+    val testType: String,\
+    val yourPeakLateralG: Float,\
+    val baselinePeakLateralG: Float,\
+    val baselinePercentile: Int,\
+    val sampleCount: Int\
+)\
+\
+/**\
+ * Retrofit API service interface\
+ */\
+interface SuspensionAnalyzerApi \{\
+    \
+    @POST("api/v1/vehicles")\
+    suspend fun submitVehicleProfile(\
+        @Body profile: VehicleProfileDto\
+    ): ApiResponse<String>\
+    \
+    @Multipart\
+    @POST("api/v1/test-runs/submit")\
+    suspend fun submitTestRun(\
+        @Part("data") data: RequestBody,\
+        @Part photo: MultipartBody.Part?\
+    ): ApiResponse<TestRunResponse>\
+    \
+    @GET("api/v1/benchmarks/compare")\
+    suspend fun getBenchmarkComparison(\
+        @Query("make") make: String,\
+        @Query("model") model: String,\
+        @Query("testType") testType: String,\
+        @Query("peakLateralG") peakLateralG: Float\
+    ): ApiResponse<BenchmarkComparisonDto>\
+    \
+    @GET("api/v1/benchmarks/vehicle")\
+    suspend fun getVehicleBenchmarks(\
+        @Query("vehicleId") vehicleId: String\
+    ): ApiResponse<List<BenchmarkDataDto>>\
+\}\
+\
+data class ApiResponse<T>(\
+    val success: Boolean,\
+    val data: T? = null,\
+    val error: String? = null\
+)\
+\
+data class TestRunResponse(\
+    val testRunId: String,\
+    val message: String\
+)\
+\
+data class BenchmarkDataDto(\
+    val peakLateralG: Float,\
+    val peakLongitudinalG: Float,\
+    val peakVerticalG: Float,\
+    val count: Int,\
+    val percentile: Int\
+)\
+\
+/**\
+ * Network client for backend communication\
+ */\
+class SuspensionAnalyzerNetworkClient(private val baseUrl: String) \{\
+    \
+    private val httpClient = OkHttpClient.Builder()\
+        .connectTimeout(30, TimeUnit.SECONDS)\
+        .readTimeout(30, TimeUnit.SECONDS)\
+        .writeTimeout(30, TimeUnit.SECONDS)\
+        .build()\
+    \
+    private val retrofit = Retrofit.Builder()\
+        .baseUrl(baseUrl)\
+        .client(httpClient)\
+        .addConverterFactory(GsonConverterFactory.create())\
+        .build()\
+    \
+    private val api = retrofit.create(SuspensionAnalyzerApi::class.java)\
+    \
+    suspend fun submitVehicleProfile(profile: VehicleProfileDto): Result<String> \{\
+        return try \{\
+            val response = api.submitVehicleProfile(profile)\
+            if (response.success && response.data != null) \{\
+                Result.success(response.data)\
+            \} else \{\
+                Result.failure(Exception(response.error ?: "Unknown error"))\
+            \}\
+        \} catch (e: Exception) \{\
+            Result.failure(e)\
+        \}\
+    \}\
+    \
+    suspend fun submitTestRun(\
+        submission: TestRunSubmissionDto,\
+        photoFile: File?\
+    ): Result<TestRunResponse> \{\
+        return try \{\
+            val submissionJson = JSONObject().apply \{\
+                put("vehicleId", submission.vehicleId)\
+                put("testType", submission.testType)\
+                put("roadSurface", submission.roadSurface)\
+                put("protocolComplianceScore", submission.protocolComplianceScore)\
+                put("peakLateralG", submission.peakLateralG)\
+                put("peakLongitudinalG", submission.peakLongitudinalG)\
+                put("peakVerticalG", submission.peakVerticalG)\
+                put("reboundSettleTime", submission.reboundSettleTime)\
+                put("ambientTemp", submission.ambientTemp)\
+                put("sensorData", JSONArray(submission.sensorDataJson))\
+            \}.toString()\
+            \
+            val dataRequestBody = submissionJson.toRequestBody("application/json".toMediaType())\
+            \
+            val photoPart = photoFile?.let \{\
+                MultipartBody.Part.createFormData(\
+                    "photo",\
+                    it.name,\
+                    it.asRequestBody("image/jpeg".toMediaType())\
+                )\
+            \}\
+            \
+            val response = api.submitTestRun(dataRequestBody, photoPart)\
+            \
+            if (response.success && response.data != null) \{\
+                Result.success(response.data)\
+            \} else \{\
+                Result.failure(Exception(response.error ?: "Upload failed"))\
+            \}\
+        \} catch (e: Exception) \{\
+            Result.failure(e)\
+        \}\
+    \}\
+    \
+    suspend fun getBenchmarkComparison(\
+        make: String,\
+        model: String,\
+        testType: String,\
+        peakLateralG: Float\
+    ): Result<BenchmarkComparisonDto> \{\
+        return try \{\
+            val response = api.getBenchmarkComparison(make, model, testType, peakLateralG)\
+            if (response.success && response.data != null) \{\
+                Result.success(response.data)\
+            \} else \{\
+                Result.failure(Exception(response.error ?: "Fetch failed"))\
+            \}\
+        \} catch (e: Exception) \{\
+            Result.failure(e)\
+        \}\
+    \}\
+\}\
+}

@@ -1,0 +1,218 @@
+package com.suspension.analyzer.sensors
+
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import kotlin.math.sqrt
+
+/**
+ * Manages sensor data collection and fusion.
+ * Handles accelerometer, gyroscope, and magnetometer with basic Kalman filtering.
+ */
+class SensorDataManager(context: Context) : SensorEventListener {
+
+    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    private val gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+    private val magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+    private val barometer = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE)
+
+    // Current sensor readings
+    private var accelX = 0f
+    private var accelY = 0f
+    private var accelZ = 0f
+
+    private var gyroX = 0f
+    private var gyroY = 0f
+    private var gyroZ = 0f
+
+    private var magX = 0f
+    private var magY = 0f
+    private var magZ = 0f
+
+    private var pressure = 0f
+    private var lastTimestamp = 0L
+
+    // Kalman filter state for gyroscope integration
+    private val gyroKalmanX = KalmanFilter(0.02f, 0.01f)  // Process noise, measurement noise
+    private val gyroKalmanY = KalmanFilter(0.02f, 0.01f)
+    private val gyroKalmanZ = KalmanFilter(0.02f, 0.01f)
+
+    // Orientation angles (pitch, roll, yaw) in radians
+    private var pitch = 0f
+    private var roll = 0f
+    private var yaw = 0f
+
+    // Calibration offsets
+    private var accelOffsetX = 0f
+    private var accelOffsetY = 0f
+    private var accelOffsetZ = 0f
+
+    private var gyroOffsetX = 0f
+    private var gyroOffsetY = 0f
+    private var gyroOffsetZ = 0f
+
+    // Listener for data updates
+    var onDataUpdated: ((SensorReading) -> Unit)? = null
+
+    data class SensorReading(
+        val timestamp: Long,
+        val accelX: Float,
+        val accelY: Float,
+        val accelZ: Float,
+        val gyroX: Float,
+        val gyroY: Float,
+        val gyroZ: Float,
+        val pitch: Float,
+        val roll: Float,
+        val yaw: Float,
+        val pressure: Float,
+        val peakLateralG: Float,
+        val peakLongitudinalG: Float,
+        val peakVerticalG: Float
+    )
+
+    fun startListening() {
+        accelerometer?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+        }
+        gyroscope?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+        }
+        magnetometer?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+        }
+        barometer?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+    }
+
+    fun stopListening() {
+        sensorManager.unregisterListener(this)
+    }
+
+    /**
+     * Capture current sensor readings for calibration (static phone, level surface)
+     */
+    fun calibrate(numSamples: Int = 100) {
+        var sumAccelX = 0f
+        var sumAccelY = 0f
+        var sumAccelZ = 0f
+        var sumGyroX = 0f
+        var sumGyroY = 0f
+        var sumGyroZ = 0f
+
+        repeat(numSamples) {
+            sumAccelX += accelX
+            sumAccelY += accelY
+            sumAccelZ += accelZ
+            sumGyroX += gyroX
+            sumGyroY += gyroY
+            sumGyroZ += gyroZ
+            Thread.sleep(10)
+        }
+
+        accelOffsetX = sumAccelX / numSamples
+        accelOffsetY = sumAccelY / numSamples
+        accelOffsetZ = (sumAccelZ / numSamples) - 9.81f  // Gravity offset
+
+        gyroOffsetX = sumGyroX / numSamples
+        gyroOffsetY = sumGyroY / numSamples
+        gyroOffsetZ = sumGyroZ / numSamples
+
+        gyroKalmanX.setState(0f)
+        gyroKalmanY.setState(0f)
+        gyroKalmanZ.setState(0f)
+    }
+
+    override fun onSensorChanged(event: SensorEvent) {
+        val currentTimestamp = System.currentTimeMillis()
+        val deltaTime = if (lastTimestamp == 0L) 0.01f else (currentTimestamp - lastTimestamp) / 1000f
+        lastTimestamp = currentTimestamp
+
+        when (event.sensor.type) {
+            Sensor.TYPE_ACCELEROMETER -> {
+                accelX = event.values[0] - accelOffsetX
+                accelY = event.values[1] - accelOffsetY
+                accelZ = event.values[2] - accelOffsetZ
+            }
+            Sensor.TYPE_GYROSCOPE -> {
+                gyroX = event.values[0] - gyroOffsetX
+                gyroY = event.values[1] - gyroOffsetY
+                gyroZ = event.values[2] - gyroOffsetZ
+
+                // Integrate gyro data with Kalman filter for orientation
+                if (deltaTime > 0) {
+                    pitch = gyroKalmanX.update(pitch + gyroY * deltaTime, gyroY)
+                    roll = gyroKalmanY.update(roll - gyroX * deltaTime, gyroX)
+                    yaw = gyroKalmanZ.update(yaw + gyroZ * deltaTime, gyroZ)
+                }
+            }
+            Sensor.TYPE_MAGNETIC_FIELD -> {
+                magX = event.values[0]
+                magY = event.values[1]
+                magZ = event.values[2]
+            }
+            Sensor.TYPE_PRESSURE -> {
+                pressure = event.values[0]
+            }
+        }
+
+        // Emit current reading
+        val peakLateralG = sqrt(accelX * accelX + accelZ * accelZ) / 9.81f
+        val peakLongitudinalG = accelY / 9.81f
+        val peakVerticalG = accelZ / 9.81f
+
+        val reading = SensorReading(
+            timestamp = currentTimestamp,
+            accelX = accelX,
+            accelY = accelY,
+            accelZ = accelZ,
+            gyroX = gyroX,
+            gyroY = gyroY,
+            gyroZ = gyroZ,
+            pitch = pitch,
+            roll = roll,
+            yaw = yaw,
+            pressure = pressure,
+            peakLateralG = peakLateralG,
+            peakLongitudinalG = peakLongitudinalG,
+            peakVerticalG = peakVerticalG
+        )
+
+        onDataUpdated?.invoke(reading)
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
+
+    /**
+     * Simple Kalman filter for smoothing noisy sensor data
+     */
+    private class KalmanFilter(
+        private val processNoise: Float,
+        private val measurementNoise: Float
+    ) {
+        private var estimate = 0f
+        private var errorEstimate = 1f
+
+        fun setState(value: Float) {
+            estimate = value
+            errorEstimate = 1f
+        }
+
+        fun update(measurement: Float, rate: Float): Float {
+            // Predict
+            val predictedEstimate = estimate
+            val predictedError = errorEstimate + processNoise
+
+            // Update
+            val kalmanGain = predictedError / (predictedError + measurementNoise)
+            estimate = predictedEstimate + kalmanGain * (measurement - predictedEstimate)
+            errorEstimate = (1 - kalmanGain) * predictedError
+
+            return estimate
+        }
+    }
+}

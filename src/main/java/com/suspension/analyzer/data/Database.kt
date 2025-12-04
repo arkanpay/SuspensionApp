@@ -1,0 +1,175 @@
+package com.suspension.analyzer.data
+
+import android.content.Context
+import androidx.room.*
+import java.io.Serializable
+
+/**
+ * Database schema for suspension analyzer app
+ */
+
+@Entity(tableName = "vehicles")
+data class VehicleProfile(
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
+    val make: String,
+    val model: String,
+    val year: Int,
+    val suspensionType: String,  // e.g., "MacPherson strut", "Double wishbone", "Air suspension"
+    val notes: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+) : Serializable
+
+@Entity(tableName = "test_runs")
+data class TestRun(
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
+    val vehicleId: Int,
+    val testType: String,  // e.g., "acceleration_0_40", "lane_change", "deceleration"
+    val roadSurface: String,  // e.g., "asphalt_smooth", "concrete", "gravel"
+    val roadPhotoPath: String = "",
+    val ambientTemp: Float = 0f,
+    val pressure: Float = 0f,
+    val protocolComplianceScore: Float = 1f,  // 0-1 indicating how well driver followed test curve
+    val peakLateralG: Float = 0f,
+    val peakLongitudinalG: Float = 0f,
+    val peakVerticalG: Float = 0f,
+    val reboundSettleTime: Long = 0L,  // milliseconds
+    val createdAt: Long = System.currentTimeMillis(),
+    val uploadedAt: Long? = null,
+    val uploaded: Boolean = false
+)
+
+@Entity(tableName = "sensor_data")
+data class SensorDataPoint(
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
+    val testRunId: Int,
+    val timestamp: Long,
+    val accelX: Float,
+    val accelY: Float,
+    val accelZ: Float,
+    val gyroX: Float,
+    val gyroY: Float,
+    val gyroZ: Float,
+    val pitch: Float,
+    val roll: Float,
+    val yaw: Float,
+    val pressure: Float
+)
+
+@Dao
+interface VehicleDao {
+    @Insert
+    suspend fun insertVehicle(vehicle: VehicleProfile): Long
+
+    @Query("SELECT * FROM vehicles ORDER BY createdAt DESC")
+    suspend fun getAllVehicles(): List<VehicleProfile>
+
+    @Query("SELECT * FROM vehicles WHERE id = :vehicleId")
+    suspend fun getVehicle(vehicleId: Int): VehicleProfile
+
+    @Update
+    suspend fun updateVehicle(vehicle: VehicleProfile)
+
+    @Delete
+    suspend fun deleteVehicle(vehicle: VehicleProfile)
+}
+
+@Dao
+interface TestRunDao {
+    @Insert
+    suspend fun insertTestRun(testRun: TestRun): Long
+
+    @Query("SELECT * FROM test_runs WHERE vehicleId = :vehicleId ORDER BY createdAt DESC")
+    suspend fun getTestRunsForVehicle(vehicleId: Int): List<TestRun>
+
+    @Query("SELECT * FROM test_runs WHERE id = :testRunId")
+    suspend fun getTestRun(testRunId: Int): TestRun
+
+    @Update
+    suspend fun updateTestRun(testRun: TestRun)
+
+    @Query("SELECT * FROM test_runs WHERE uploaded = 0 ORDER BY createdAt ASC")
+    suspend fun getPendingUploads(): List<TestRun>
+}
+
+@Dao
+interface SensorDataDao {
+    @Insert
+    suspend fun insertSensorDataPoint(point: SensorDataPoint)
+
+    @Insert
+    suspend fun insertSensorDataPoints(points: List<SensorDataPoint>)
+
+    @Query("SELECT * FROM sensor_data WHERE testRunId = :testRunId ORDER BY timestamp ASC")
+    suspend fun getSensorDataForTestRun(testRunId: Int): List<SensorDataPoint>
+
+    @Query("DELETE FROM sensor_data WHERE testRunId = :testRunId")
+    suspend fun deleteSensorDataForTestRun(testRunId: Int)
+}
+
+@Database(
+    entities = [VehicleProfile::class, TestRun::class, SensorDataPoint::class],
+    version = 1
+)
+abstract class SuspensionAnalyzerDatabase : RoomDatabase() {
+    abstract fun vehicleDao(): VehicleDao
+    abstract fun testRunDao(): TestRunDao
+    abstract fun sensorDataDao(): SensorDataDao
+
+    companion object {
+        @Volatile private var instance: SuspensionAnalyzerDatabase? = null
+
+        fun getInstance(context: Context): SuspensionAnalyzerDatabase {
+            return instance ?: synchronized(this) {
+                Room.databaseBuilder(
+                    context.applicationContext,
+                    SuspensionAnalyzerDatabase::class.java,
+                    "suspension_analyzer.db"
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
+                    .also { instance = it }
+            }
+        }
+    }
+}
+
+/**
+ * Repository pattern for clean data access
+ */
+class SuspensionRepository(private val database: SuspensionAnalyzerDatabase) {
+
+    suspend fun createVehicle(vehicle: VehicleProfile): Long {
+        return database.vehicleDao().insertVehicle(vehicle)
+    }
+
+    suspend fun getAllVehicles(): List<VehicleProfile> {
+        return database.vehicleDao().getAllVehicles()
+    }
+
+    suspend fun startTestRun(testRun: TestRun): Long {
+        return database.testRunDao().insertTestRun(testRun)
+    }
+
+    suspend fun saveSensorData(sensorDataPoints: List<SensorDataPoint>) {
+        database.sensorDataDao().insertSensorDataPoints(sensorDataPoints)
+    }
+
+    suspend fun completeTestRun(testRun: TestRun) {
+        database.testRunDao().updateTestRun(testRun)
+    }
+
+    suspend fun getTestRunsForVehicle(vehicleId: Int): List<TestRun> {
+        return database.testRunDao().getTestRunsForVehicle(vehicleId)
+    }
+
+    suspend fun getSensorDataForTestRun(testRunId: Int): List<SensorDataPoint> {
+        return database.sensorDataDao().getSensorDataForTestRun(testRunId)
+    }
+
+    suspend fun getPendingUploads(): List<TestRun> {
+        return database.testRunDao().getPendingUploads()
+    }
+}

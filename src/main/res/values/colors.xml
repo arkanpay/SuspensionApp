@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="dark_background">#1a1a1a</color>
+    <color name="panel_background">#222222</color>
+    <color name="status_bar">#333333</color>
+    <color name="g_force_low">#4CAF50</color>
+    <color name="g_force_medium">#FFEB3B</color>
+    <color name="g_force_high">#F44336</color>
+    <color name="peak_gold">#FFD700</color>
+    <color name="calibrate_orange">#FF9800</color>
+</resources>

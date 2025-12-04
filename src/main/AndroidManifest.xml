@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.suspension.analyzer">
+
+    <!-- Sensors -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Camera for road surface photo -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Storage for photos and local database -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <!-- Network for backend communication -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Foreground service for continuous sensor monitoring -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="true" />
+    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="true" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.SuspensionAnalyzer"
+        android:debuggable="true">
+
+        <!-- Main activity for UI -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Test Selection Activity -->
+        <activity
+            android:name=".TestSelectionActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- Test Execution Activity -->
+        <activity
+            android:name=".TestExecutionActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- Test Results Activity -->
+        <activity
+            android:name=".TestResultsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- Foreground service for sensor collection -->
+        <service
+            android:name=".service.SensorCollectionService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
+
+        <!-- FileProvider for sharing results -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>

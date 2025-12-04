@@ -1,0 +1,191 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2865
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\froman\fcharset0 Times-Roman;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 \
+package com.suspension.analyzer.test\
+\
+import com.suspension.analyzer.sensors.SensorDataManager\
+\
+/**\
+ * Manages standardized test protocols and validates driver compliance\
+ */\
+class TestProtocolManager \{\
+    \
+    sealed class TestProtocol(\
+        val name: String,\
+        val description: String,\
+        val durationSeconds: Int\
+    ) \{\
+        abstract fun getTargetAccelerationAtTime(elapsedSeconds: Float): Float\
+        abstract fun getMinComplianceScore(): Float\
+    \}\
+    \
+    /**\
+     * Smooth acceleration from 0-40 mph (0-18 m/s) over 20 seconds\
+     * Target: smooth linear acceleration\
+     */\
+    class SmoothAccelerationTest : TestProtocol(\
+        name = "Smooth Acceleration 0-40 mph",\
+        description = "Gradually accelerate from stop to 40 mph following the onscreen curve",\
+        durationSeconds = 20\
+    ) \{\
+        override fun getTargetAccelerationAtTime(elapsedSeconds: Float): Float \{\
+            // Target: 0.9 m/s\'b2 constant (smooth linear to 18 m/s in 20s)\
+            return 0.9f\
+        \}\
+        \
+        override fun getMinComplianceScore(): Float = 0.75f  // 75% compliance required\
+    \}\
+    \
+    data class TestRunMetrics(\
+        val elapsedTime: Long,\
+        val speedMPS: Float,\
+        val targetAccel: Float,\
+        val measuredAccel: Float,\
+        val complianceDeviation: Float,\
+        val complianceScore: Float,\
+        val peakLateralG: Float,\
+        val peakLongitudinalG: Float,\
+        val peakVerticalG: Float\
+    )\
+    \
+    private var currentTestProtocol: TestProtocol? = null\
+    private var testStartTime: Long = 0L\
+    private var measuredAccelerations = mutableListOf<Float>()\
+    private var targetAccelerations = mutableListOf<Float>()\
+    private var speeds = mutableListOf<Float>()\
+    private var lateralGForces = mutableListOf<Float>()\
+    private var longitudinalGForces = mutableListOf<Float>()\
+    private var verticalGForces = mutableListOf<Float>()\
+    \
+    private var lastSpeedMPS = 0f\
+    private var complianceCallBack: ((TestRunMetrics) -> Unit)? = null\
+    \
+    fun startTest(protocol: TestProtocol, onMetricsUpdated: (TestRunMetrics) -> Unit) \{\
+        currentTestProtocol = protocol\
+        testStartTime = System.currentTimeMillis()\
+        measuredAccelerations.clear()\
+        targetAccelerations.clear()\
+        speeds.clear()\
+        lateralGForces.clear()\
+        longitudinalGForces.clear()\
+        verticalGForces.clear()\
+        lastSpeedMPS = 0f\
+        complianceCallBack = onMetricsUpdated\
+    \}\
+    \
+    fun processFrame(sensorReading: SensorDataManager.SensorReading): TestRunMetrics \{\
+        val protocol = currentTestProtocol ?: throw IllegalStateException("No test protocol active")\
+        val elapsedTime = System.currentTimeMillis() - testStartTime\
+        val elapsedSeconds = elapsedTime / 1000f\
+        \
+        // Estimate speed from integrated acceleration (simplified; real app would need GPS or OBD)\
+        val deltaTime = 0.01f  // Assuming ~100Hz sampling\
+        val accelMPS2 = sensorReading.accelY  // Longitudinal acceleration\
+        val speedMPS = lastSpeedMPS + (accelMPS2 * deltaTime)\
+        lastSpeedMPS = speedMPS\
+        \
+        speeds.add(speedMPS)\
+        \
+        // Get target acceleration for this point in time\
+        val targetAccel = protocol.getTargetAccelerationAtTime(elapsedSeconds)\
+        val measuredAccel = accelMPS2\
+        \
+        targetAccelerations.add(targetAccel)\
+        measuredAccelerations.add(measuredAccel)\
+        \
+        lateralGForces.add(sensorReading.peakLateralG)\
+        longitudinalGForces.add(sensorReading.peakLongitudinalG)\
+        verticalGForces.add(sensorReading.peakVerticalG)\
+        \
+        // Calculate compliance score: how closely measured matches target\
+        // Using root mean square error\
+        val complianceDeviation = calculateComplianceDeviation(\
+            measuredAccelerations,\
+            targetAccelerations\
+        )\
+        val complianceScore = (1f - complianceDeviation).coerceIn(0f, 1f)\
+        \
+        val metrics = TestRunMetrics(\
+            elapsedTime = elapsedTime,\
+            speedMPS = speedMPS,\
+            targetAccel = targetAccel,\
+            measuredAccel = measuredAccel,\
+            complianceDeviation = complianceDeviation,\
+            complianceScore = complianceScore,\
+            peakLateralG = lateralGForces.maxOrNull() ?: 0f,\
+            peakLongitudinalG = longitudinalGForces.maxOrNull() ?: 0f,\
+            peakVerticalG = verticalGForces.maxOrNull() ?: 0f\
+        )\
+        \
+        complianceCallBack?.invoke(metrics)\
+        \
+        return metrics\
+    \}\
+    \
+    fun endTest(): TestResultSummary \{\
+        val protocol = currentTestProtocol ?: throw IllegalStateException("No test protocol active")\
+        \
+        val avgComplianceScore = calculateComplianceDeviation(\
+            measuredAccelerations,\
+            targetAccelerations\
+        ).let \{ (1f - it).coerceIn(0f, 1f) \}\
+        \
+        val passedCompliance = avgComplianceScore >= protocol.getMinComplianceScore()\
+        \
+        return TestResultSummary(\
+            protocol = protocol,\
+            durationMs = System.currentTimeMillis() - testStartTime,\
+            complianceScore = avgComplianceScore,\
+            passed = passedCompliance,\
+            peakLateralG = lateralGForces.maxOrNull() ?: 0f,\
+            peakLongitudinalG = longitudinalGForces.maxOrNull() ?: 0f,\
+            peakVerticalG = verticalGForces.maxOrNull() ?: 0f,\
+            avgSpeed = speeds.average(),\
+            maxSpeed = speeds.maxOrNull() ?: 0f,\
+            dataPoints = measuredAccelerations.size\
+        )\
+    \}\
+    \
+    private fun calculateComplianceDeviation(\
+        measured: List<Float>,\
+        target: List<Float>\
+    ): Float \{\
+        if (measured.isEmpty() || target.isEmpty()) return 1f\
+        \
+        // RMSE normalized by target magnitude\
+        val pairs = measured.zip(target)\
+        val sumSquaredError = pairs.sumOf \{ (m, t) -> ((m - t) * (m - t)).toDouble() \}\
+        val rmse = kotlin.math.sqrt(sumSquaredError / pairs.size)\
+        \
+        // Normalize by average target magnitude\
+        val avgTargetMagnitude = target.map \{ kotlin.math.abs(it) \}.average()\
+        return if (avgTargetMagnitude > 0) (rmse / avgTargetMagnitude).toFloat() else 0f\
+    \}\
+    \
+    data class TestResultSummary(\
+        val protocol: TestProtocol,\
+        val durationMs: Long,\
+        val complianceScore: Float,\
+        val passed: Boolean,\
+        val peakLateralG: Float,\
+        val peakLongitudinalG: Float,\
+        val peakVerticalG: Float,\
+        val avgSpeed: Double,\
+        val maxSpeed: Float,\
+        val dataPoints: Int\
+    )\
+    \
+    companion object \{\
+        fun getAvailableProtocols(): List<TestProtocol> = listOf(\
+            SmoothAccelerationTest()\
+        )\
+    \}\
+\}\
+}

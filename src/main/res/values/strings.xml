@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Suspension Analyzer</string>
+    <string name="calibrate">Calibrate</string>
+    <string name="start_test">Start Test</string>
+    <string name="stop_test">Stop Test</string>
+    <string name="status_idle">Idle</string>
+    <string name="status_recording">Recording...</string>
+    <string name="status_calibrating">Calibrating... Keep phone still!</string>
+    <string name="permission_required">Sensor permissions required</string>
+</resources>
