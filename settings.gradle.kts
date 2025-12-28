@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "SuspensionAnalyzer"
-include(":app")
+// Removed include(":app") because your src folder is in the root
