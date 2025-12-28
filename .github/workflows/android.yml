@@ -25,12 +25,10 @@ jobs:
       run: chmod +x gradlew
 
     - name: Build Debug APK
-      # Removed :app: prefix because src is in the root directory
       run: ./gradlew assembleDebug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: suspension-analyzer-debug
-        # Targeted to the root build directory
         path: build/outputs/apk/debug/*.apk
