@@ -94,18 +94,27 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewTestsButton.setOnClickListener {
-            // Launch DataManagerFragment
-            startActivity(Intent(this, DataManagerActivity::class.java))
+            // Show DataManagerFragment
+            supportFragmentManager.beginTransaction()
+                .replace(android.R.id.content, com.suspension.analyzer.ui.DataManagerFragment())
+                .addToBackStack(null)
+                .commit()
         }
 
         compareButton.setOnClickListener {
-            // Launch ComparisonFragment
-            startActivity(Intent(this, ComparisonActivity::class.java))
+            // Show ComparisonFragment
+            supportFragmentManager.beginTransaction()
+                .replace(android.R.id.content, com.suspension.analyzer.ui.ComparisonFragment())
+                .addToBackStack(null)
+                .commit()
         }
 
         exportButton.setOnClickListener {
-            // Launch export logic or DataManagerFragment export
-            startActivity(Intent(this, DataManagerActivity::class.java))
+            // Show DataManagerFragment for export
+            supportFragmentManager.beginTransaction()
+                .replace(android.R.id.content, com.suspension.analyzer.ui.DataManagerFragment())
+                .addToBackStack(null)
+                .commit()
         }
 
         safetyWarningTextView.text = "Secure phone, drive safely."
