@@ -19,6 +19,12 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
+        private var manualSpeed: Float? = null
+    private lateinit var viewTestsButton: Button
+    private lateinit var compareButton: Button
+    private lateinit var exportButton: Button
+    private lateinit var safetyWarningTextView: TextView
+    private lateinit var disclaimerTextView: TextView
 
     private lateinit var sensorManager: SensorDataManager
     private lateinit var carVisualization: CarVisualization
@@ -70,9 +76,15 @@ class MainActivity : AppCompatActivity() {
         calibrateButton = findViewById(R.id.calibrateButton)
         statusTextView = findViewById(R.id.statusTextView)
 
+        // New UI elements
+        viewTestsButton = findViewById(R.id.viewTestsButton)
+        compareButton = findViewById(R.id.compareButton)
+        exportButton = findViewById(R.id.exportButton)
+        safetyWarningTextView = findViewById(R.id.safetyWarningTextView)
+        disclaimerTextView = findViewById(R.id.disclaimerTextView)
+
         startButton.text = "Start Test"
         startButton.setOnClickListener {
-            // Launch test selection screen
             val intent = Intent(this, TestSelectionActivity::class.java)
             startActivity(intent)
         }
@@ -80,12 +92,33 @@ class MainActivity : AppCompatActivity() {
         calibrateButton.setOnClickListener {
             calibrateSensors()
         }
+
+        viewTestsButton.setOnClickListener {
+            // Launch DataManagerFragment
+            startActivity(Intent(this, DataManagerActivity::class.java))
+        }
+
+        compareButton.setOnClickListener {
+            // Launch ComparisonFragment
+            startActivity(Intent(this, ComparisonActivity::class.java))
+        }
+
+        exportButton.setOnClickListener {
+            // Launch export logic or DataManagerFragment export
+            startActivity(Intent(this, DataManagerActivity::class.java))
+        }
+
+        safetyWarningTextView.text = "Secure phone, drive safely."
+        disclaimerTextView.text = "Approximate results; not professional diagnostics."
     }
 
     private fun checkAndRequestPermissions() {
         val permissions = arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.CAMERA
+            Manifest.permission.CAMERA,
+            Manifest.permission.BODY_SENSORS,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
         )
 
         val permissionsNeeded = permissions.filter {
@@ -113,11 +146,41 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            // GPS speed integration (pseudo, actual implementation may use FusedLocationProviderClient)
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                // TODO: Integrate FusedLocationProviderClient for real GPS speed
+                // If GPS fails, fallback to manual
+                // For now, simulate GPS unavailable
+                showManualSpeedDialog()
+            } else {
+                showManualSpeedDialog()
+            }
+
             sensorManager.startListening()
             statusTextView.text = "Sensors Active"
         } catch (e: Exception) {
             statusTextView.text = "Sensor Error: ${e.message}"
             Toast.makeText(this, "Sensor initialization failed: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun showManualSpeedDialog() {
+        runOnUiThread {
+            val editText = android.widget.EditText(this)
+            editText.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            editText.hint = "Enter speed in km/h"
+            android.app.AlertDialog.Builder(this)
+                .setTitle("Manual Speed Input")
+                .setMessage("GPS unavailable. Please enter speed manually.")
+                .setView(editText)
+                .setCancelable(false)
+                .setPositiveButton("OK") { _, _ ->
+                    val speedKmh = editText.text.toString().toFloatOrNull() ?: 0f
+                    manualSpeed = speedKmh / 3.6f // convert to m/s
+                    sensorManager.updateSpeed(manualSpeed!!)
+                    Toast.makeText(this, "Manual speed set: $speedKmh km/h", Toast.LENGTH_SHORT).show()
+                }
+                .show()
         }
     }
 

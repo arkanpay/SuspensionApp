@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+    <data>
+    </data>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/comparisonTable"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Comparison Table"
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+            android:layout_marginBottom="8dp" />
+
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/comparisonChart"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/relativeScore"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Relative Score"
+            android:textAppearance="@style/TextAppearance.AppCompat.Large"
+            android:textColor="#4CAF50" />
+    </LinearLayout>
+</layout>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <data>
+    </data>
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp">
+
+            <com.github.mikephil.charting.charts.LineChart
+                android:id="@+id/lineChart"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                app:theme="@style/ThemeOverlay.AppCompat.Dark" />
+
+            <com.github.mikephil.charting.charts.BarChart
+                android:id="@+id/barChart"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                app:theme="@style/ThemeOverlay.AppCompat.Dark" />
+
+            <com.github.mikephil.charting.charts.ScatterChart
+                android:id="@+id/scatterChart"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                app:theme="@style/ThemeOverlay.AppCompat.Dark" />
+
+            <TextView
+                android:id="@+id/scoreText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Score: --"
+                android:textAppearance="@style/TextAppearance.AppCompat.Large"
+                android:layout_marginTop="16dp" />
+
+            <TextView
+                android:id="@+id/scoreExplanation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Score >80: Excellent for urban roads"
+                android:layout_marginTop="8dp" />
+
+            <TextView
+                android:id="@+id/disclaimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Approximate results; not professional diagnostics"
+                android:textColor="#FF9800"
+                android:layout_marginTop="16dp" />
+        </LinearLayout>
+    </ScrollView>
+</layout>

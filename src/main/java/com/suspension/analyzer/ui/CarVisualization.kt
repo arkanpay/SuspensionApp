@@ -15,6 +15,24 @@ import kotlin.math.sin
  * Updates in real-time based on phone orientation (pitch, roll, yaw)
  */
 class CarVisualization @JvmOverloads constructor(
+        // Suspension score overlay
+        private var score: Double? = null
+        private val scorePaint = Paint().apply {
+            color = Color.argb(200, 30, 30, 30)
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
+        private val scoreTextPaint = Paint().apply {
+            color = Color.WHITE
+            textSize = 48f
+            isAntiAlias = true
+            setShadowLayer(4f, 2f, 2f, Color.BLACK)
+        }
+
+        fun setScore(score: Double?) {
+            this.score = score
+            invalidate()
+        }
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
@@ -115,6 +133,20 @@ class CarVisualization @JvmOverloads constructor(
 
         // Draw orientation indicators
         drawOrientationAxes(canvas, centerX, centerY, scale)
+
+        // Draw score overlay (top-right corner)
+        score?.let {
+            val scoreText = "Score: %.1f".format(it)
+            val padding = 24f
+            val rectWidth = scoreTextPaint.measureText(scoreText) + 2 * padding
+            val rectHeight = 70f
+            val left = width - rectWidth - padding
+            val top = padding
+            // Draw background
+            canvas.drawRoundRect(left, top, left + rectWidth, top + rectHeight, 20f, 20f, scorePaint)
+            // Draw text
+            canvas.drawText(scoreText, left + padding, top + rectHeight / 1.7f, scoreTextPaint)
+        }
     }
 
     private fun drawFilledFaces(canvas: Canvas, vertices: List<Pair<Float, Float>?>) {

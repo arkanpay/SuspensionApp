@@ -12,6 +12,13 @@ import kotlin.math.sqrt
  * Handles accelerometer, gyroscope, and magnetometer with basic Kalman filtering.
  */
 class SensorDataManager(context: Context) : SensorEventListener {
+    // GPS speed (m/s)
+    @Volatile
+    private var currentSpeed: Float = 0f
+
+    // Low-pass filter state for vertical acceleration (z-axis)
+    private var filteredAccelZ = 0f
+    private val lowPassAlpha = 0.15f // Butterworth-like, tune as needed
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
@@ -62,6 +69,7 @@ class SensorDataManager(context: Context) : SensorEventListener {
         val accelX: Float,
         val accelY: Float,
         val accelZ: Float,
+        val filteredAccelZ: Float,
         val gyroX: Float,
         val gyroY: Float,
         val gyroZ: Float,
@@ -69,6 +77,7 @@ class SensorDataManager(context: Context) : SensorEventListener {
         val roll: Float,
         val yaw: Float,
         val pressure: Float,
+        val speed: Float, // m/s
         val peakLateralG: Float,
         val peakLongitudinalG: Float,
         val peakVerticalG: Float
@@ -76,10 +85,10 @@ class SensorDataManager(context: Context) : SensorEventListener {
 
     fun startListening() {
         accelerometer?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_FASTEST)
         }
         gyroscope?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_FASTEST)
         }
         magnetometer?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
@@ -87,6 +96,12 @@ class SensorDataManager(context: Context) : SensorEventListener {
         barometer?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
         }
+    }
+    /**
+     * Update speed from GPS (in m/s). Should be called from activity when new speed is available.
+     */
+    fun updateSpeed(speed: Float) {
+        currentSpeed = speed
     }
 
     fun stopListening() {
@@ -137,6 +152,8 @@ class SensorDataManager(context: Context) : SensorEventListener {
                 accelX = event.values[0] - accelOffsetX
                 accelY = event.values[1] - accelOffsetY
                 accelZ = event.values[2] - accelOffsetZ
+                // Low-pass filter for z-axis (vertical)
+                filteredAccelZ = lowPassAlpha * accelZ + (1 - lowPassAlpha) * filteredAccelZ
             }
             Sensor.TYPE_GYROSCOPE -> {
                 gyroX = event.values[0] - gyroOffsetX
@@ -170,6 +187,7 @@ class SensorDataManager(context: Context) : SensorEventListener {
             accelX = accelX,
             accelY = accelY,
             accelZ = accelZ,
+            filteredAccelZ = filteredAccelZ,
             gyroX = gyroX,
             gyroY = gyroY,
             gyroZ = gyroZ,
@@ -177,6 +195,7 @@ class SensorDataManager(context: Context) : SensorEventListener {
             roll = roll,
             yaw = yaw,
             pressure = pressure,
+            speed = currentSpeed,
             peakLateralG = peakLateralG,
             peakLongitudinalG = peakLongitudinalG,
             peakVerticalG = peakVerticalG

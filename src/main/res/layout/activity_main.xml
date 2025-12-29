@@ -113,6 +113,7 @@
             android:background="#333333" />
     </LinearLayout>
 
+
     <!-- Control Buttons -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -122,8 +123,7 @@
         android:gravity="center"
         app:layout_constraintTop_toBottomOf="@id/gForceSection"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <Button
             android:id="@+id/calibrateButton"
@@ -145,5 +145,74 @@
             android:layout_marginStart="8dp"
             android:backgroundTint="#4CAF50" />
     </LinearLayout>
+
+    <!-- New Feature Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:gravity="center"
+        app:layout_constraintTop_toBottomOf="@id/startButton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <Button
+            android:id="@+id/viewTestsButton"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:text="View Saved Tests"
+            android:textSize="15sp"
+            android:layout_marginEnd="8dp"
+            android:backgroundTint="#2196F3" />
+
+        <Button
+            android:id="@+id/compareButton"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:text="Compare"
+            android:textSize="15sp"
+            android:layout_marginEnd="8dp"
+            android:backgroundTint="#9C27B0" />
+
+        <Button
+            android:id="@+id/exportButton"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:text="Export"
+            android:textSize="15sp"
+            android:backgroundTint="#FF5722" />
+    </LinearLayout>
+
+    <!-- Safety Warning and Disclaimer -->
+    <TextView
+        android:id="@+id/safetyWarningTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Secure phone, drive safely."
+        android:textColor="#FFEB3B"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:padding="8dp"
+        android:background="#333333"
+        app:layout_constraintTop_toBottomOf="@id/exportButton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <TextView
+        android:id="@+id/disclaimerTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Approximate results; not professional diagnostics."
+        android:textColor="#FF9800"
+        android:gravity="center"
+        android:padding="8dp"
+        android:background="#222222"
+        app:layout_constraintTop_toBottomOf="@id/safetyWarningTextView"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

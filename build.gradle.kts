@@ -58,11 +58,8 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    // Networking
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    // MPAndroidChart for advanced charting
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
     // SceneView for 3D rendering
     implementation("io.github.sceneview:sceneview:2.0.3")
