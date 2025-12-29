@@ -15,28 +15,28 @@ import kotlin.math.sin
  * Updates in real-time based on phone orientation (pitch, roll, yaw)
  */
 class CarVisualization @JvmOverloads constructor(
-        // Suspension score overlay
-        private var score: Double? = null
-        private val scorePaint = Paint().apply {
-            color = Color.argb(200, 30, 30, 30)
-            style = Paint.Style.FILL
-            isAntiAlias = true
-        }
-        private val scoreTextPaint = Paint().apply {
-            color = Color.WHITE
-            textSize = 48f
-            isAntiAlias = true
-            setShadowLayer(4f, 2f, 2f, Color.BLACK)
-        }
-
-        fun setScore(score: Double?) {
-            this.score = score
-            invalidate()
-        }
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
+    // Suspension score overlay
+    private var score: Double? = null
+    private val scorePaint = Paint().apply {
+        color = Color.argb(200, 30, 30, 30)
+        style = Paint.Style.FILL
+        isAntiAlias = true
+    }
+    private val scoreTextPaint = Paint().apply {
+        color = Color.WHITE
+        textSize = 48f
+        isAntiAlias = true
+        setShadowLayer(4f, 2f, 2f, Color.BLACK)
+    }
+
+    fun setScore(score: Double?) {
+        this.score = score
+        invalidate()
+    }
 
     private val paint = Paint().apply {
         color = Color.WHITE
