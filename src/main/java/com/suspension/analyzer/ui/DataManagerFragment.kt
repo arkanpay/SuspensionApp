@@ -49,7 +49,13 @@ class DataManagerFragment : Fragment() {
         binding.recyclerView.adapter = adapter
         binding.exportButton.setOnClickListener { exportLauncher.launch("suspension_tests.json") }
         binding.importButton.setOnClickListener { importTests() }
-        binding.searchEdit.addTextChangedListener { text -> viewModel.filter(text.toString()) }
+        binding.searchEdit.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                viewModel.filter(s?.toString() ?: "")
+            }
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
         viewModel.testResults.observe(viewLifecycleOwner) { adapter.submitList(it) }
         viewModel.loadTests()
     }
